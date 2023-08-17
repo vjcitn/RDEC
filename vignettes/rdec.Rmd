@@ -1,0 +1,114 @@
+---
+title: "rdec - regression with damped exponential correlation"
+author: "Vincent J. Carey, stvjc at channing.harvard.edu"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteIndexEntry{rdec - regression with damped exponential correlation}
+  %\VignetteEncoding{UTF-8}
+output:
+  BiocStyle::html_document:
+    highlight: pygments
+    number_sections: yes
+    theme: united
+    toc: yes
+---
+
+# Introduction
+
+The model implemented here was described in Munoz A, Carey VJ, Schouten J,
+Segal M, Rosner B, A parametric family of correlation structures for
+the analysis of longitudinal data, Biometrics 48, 733-742, September 1992.
+A JSTOR URL is [https://www.jstor.org/stable/2532340](https://www.jstor.org/stable/2532340).
+
+We consider longitudinal responses $y_{ij}$, $j=1, \ldots n_i$, $i = 1, \ldots, N$.
+The $n_i$-vector $y_i$ has elements that are assumed ordered in time with
+timings recorded in $s_{ij}$.  A $p$-vector of predictors including an intercept
+is provided for each observation in $x_{ij}$.
+
+`rdec` fits the model 
+\[
+y_{ij} = x_{ij} \beta + e_{ij}
+\]
+in which the $n_i$-vectors $e_{i}$ are assumed multivariate Gaussian with
+covariance $\sigma^2 R(\gamma, \theta; s_i)$.  For
+$1 \leq g, h, \leq n_i$ the $g,h$ element of $R(\gamma, \theta; s_i)$
+is given by
+\[
+Corr(y_{ig}, y_{ih}) = \gamma ^ { |s_{ig} - s_{ih} |^\theta }.
+\]
+Models with $\theta = 0$ are also called exchangeable or compound symmetry
+models.  Models with $\theta = 1$ correspond to first-degree autoregressions (AR(1)
+models).
+As $\theta \rightarrow \infty$ the model approaches a first-order moving average.
+`rdec` implements maximum likelihood estimation of all parameters $\beta$, $\sigma$,
+$\gamma$, $\theta$.  Munoz et al in the paper referenced above provide empirical
+evidence that members of the rdec model family can effectively approximate
+second-order autoregressive (AR(2)) models and AR(1) models with random intercept.
+
+# A simple simulation
+
+The function `mycov` builds a correlation matrix
+based on the rdec model, with observation times in `s`.
+```{r dosim1}
+library(MASS)
+mycov = function(gam=.33, theta=.5, s=1:5) {
+  d = as.matrix(dist(s, method="manhattan"))
+  gam^(d^theta)
+}
+```
+
+The model can accommodate clusters of different sizes
+and heterogeneous timings.  Here we simulate a zero-mean
+model with fixed `gamma` and `theta` for common timings
+for all elements of `N` clusters in `s`.
+```{r lksim}
+simgst_bal_zeromean = function(gam, theta, s1=1:5, N=100) {
+  dat = mvrnorm(N, rep(0,length(s1)), mycov(gam=gam, theta=theta, s=s1))
+  mdat = reshape2::melt(dat)
+  ndat = dplyr::arrange(mdat, Var1)
+  rdec::rdec(value~1, id=ndat$Var1, S=ndat$Var2, data=ndat)
+}
+```
+
+Here is the result of a single simulation.
+```{r do1}
+set.seed(1234)
+n1 = simgst_bal_zeromean(.33, .5)
+summary(n1)
+```
+
+Now we replicate the simulation process for 100 realizations.
+```{r do2}
+n2 = replicate(100, simgst_bal_zeromean(.33, .5))
+```
+
+A report on the first replicate is:
+```{r do3}
+rdec:::summary.rdec(n2[,1])
+```
+
+The distribution of estimates of $\gamma$ can be obtained using
+```{r do4}
+gams = apply(n2, 2, function(x) x$omega[1])
+summary(gams)
+```
+
+The standard errors estimated by the procedure can be collected
+as follows:
+```{r do5}
+getses = function(x) rdec:::summary.rdec(x)$se.omega
+allses = apply(n2, 2, getses)
+```
+
+The standard errors should estimate
+the standard deviation of estimates over the simulation
+replicates.
+```{r lk5}
+sd(gams)
+summary(allses[1,])
+```
+
+The median s.e. estimate for $\hat{\gamma}$ is close to the sampling s.d. for
+the estimates of $\gamma$.  
+

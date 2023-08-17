@@ -1,49 +1,3 @@
-nrdec.fit <- function( x, y, id, S, omegainit=c(.0,.0), ltol=.01, omega.low = c(0.001,0), omega.high=c(.95,.95), verbose=FALSE
- )
-	{
-	if (length(omegainit)!=2) stop("omegainit must have length 2")
-	if (length(y) != nrow(x)) stop("x and y non-conforming")
-	if (length(y) != length(id)) stop("id and y non-conforming")
-	if (length(y) != length(S)) stop("id and s non-conforming")
-
-		omega <- omegainit
-
-		beta.sig2 <- gls.beta.sig2( x, y, id, S, omega )
-
-		beta <- beta.sig2$beta
-		sig2 <- beta.sig2$sig2
-		newl <- rdec.m2llik( omega, x, y, id, S, beta, sig2 )
-
-		if (verbose) cat("Initial -2 ln L = ",newl,"\n")
-		oldl <- newl + 10*ltol
-		while ( (oldl - newl) > ltol )
-			{
-			oldl <- newl
-			optstr <-        nlminb( start=omega, objective = rdec.m2llik,
-				                 	gradient=rdec.prof.grad, hessian=rdec.prof.hess, lower=omega.low, 
-						 	upper=omega.high, x=x, y=y, id=id, S=S, beta=beta, sig2=sig2
- )
-				  	
-				msgs <- c("X CONVERGENCE", "RELATIVE FUNCTION CONVERGENCE", 
-					    "BOTH X AND RELATIVE FUNCTION CONVERGENCE", 
-					    "ABSOLUTE FUNCTION CONVERGENCE")
-				if (optstr$convergence != 0 && is.na(match(optstr$message,msgs)))
-					 warning(paste("Convergence suspect",optstr$message))
-
-			omega <- optstr$parameter
-			beta.sig2 <- gls.beta.sig2( x, y, id, S, omega )
-
-			beta <- beta.sig2$beta
-			sig2 <- beta.sig2$sig2
-			newl <- rdec.m2llik( omega, x, y, id, S, beta, sig2 )
-
-			if (verbose) cat("Updated -2 ln L = ",newl,"\n")
-			}
-
-	optstr$aux <- NULL
-	list( beta=beta, sig2=sig2, omega=omega, m2ll=newl, opt=optstr )
-
-	}
 
 #' likelihood evaluator
 #' @rawNamespace useDynLib("rdec")
@@ -293,37 +247,6 @@ rdec <- function (formula, id, S, data , subset, na.action = na.fail,
 
  
 
-bad.rdec <- function(formula, id, S, data = sys.parent(), subset, na.action=na.fail, omega.init = c(0, 0), 
-	omega.low = c(0.001, 0), omega.high = c(0.95, 0.95), ltol = 0.01, 
-	contrasts = NULL, verbose=FALSE)
-{
-	call <- match.call()
-	m <- match.call(expand.dots = FALSE)
-        if(missing(data) & !missing(na.action))
-                stop("supply data frame (data=) if na.action is to be used")
-#        if(!missing(data))
-#                attach(na.action(data))
-#	m$id <- m$S <- m$omega.init <- m$omega.low <- m$omega.high <- m$ltol <- 
-#		m$contrasts <- m$verbose <- NULL
-#	m[[1]] <- as.name("model.frame")
-#	m <- eval(m, sys.parent())
-	Terms <- attr(m, "terms")
-	Y <- model.extract(m, "response")
-	X <- model.matrix(Terms, m) #, "contrasts")
-	id <- as.double(id)
-	S <- as.double(S)
-	fit <- rdec.fit(X, Y, id, S, omegainit = omega.init, omega.high = 
-		omega.high, omega.low = omega.low, ltol = ltol, verbose=verbose)
-	fit$terms <- Terms
-	fit$call <- call
-	fit$N <- length(Y)
-	fit$Nclust <- length(unique(id))
-	fit$fitted.values <- X %*% fit$coefficients
-	fit$residuals <- Y - fit$fitted.values
-	attr(fit, "na.message") <- attr(m, "na.message")
-	class(fit) <- c("rdec") #, "lm")
-	fit
-}
 
 
 rdec.fit <- function (x, y, id, S, omegainit = c(0, 0), ltol = 0.01, omega.low = c(0.001, 
