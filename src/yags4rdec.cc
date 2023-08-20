@@ -2348,7 +2348,7 @@ jmp_buf mcpp_env;
     matrix PRall = mult_like_S(Rall,Aill);
     phi = LZ_scalefun(PRall, IDin, Tin, *p );
  // if fixscale or a UJ_martingale, set phi to 1
-    if (*corcode == UJ_equimart | *fixscale == 1) phi = 1.0;
+    if ((*corcode == UJ_equimart) | (*fixscale == 1)) phi = 1.0;
  // if corstr implies an auxiliary estimating function,
  // solve the associated estimating equation
     if (*corcode == UJ_fomstr || *corcode == UG_fomstr || *corcode == UQ_fomstr
