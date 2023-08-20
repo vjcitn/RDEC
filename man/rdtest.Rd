@@ -8,7 +8,7 @@
 data.frame
 }
 \usage{
-rdtest
+data("rdtest", package="rdec")
 }
 \description{
 test dataset
