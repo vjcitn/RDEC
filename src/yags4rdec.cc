@@ -67,20 +67,42 @@ jmp_buf mcpp_env;
  	ncols = 0;
  	};
  
- matrix::matrix(const matrix& inmat)   /* constructor for initialization by existing object */
+
+ matrix::matrix(const matrix& inmat)   
  	{
  	nrows = inmat.nrows;
  	ncols = inmat.ncols;
- 	data = new double[ nrows*ncols ];
- 	for ( int i = 0 ; i < nrows*ncols ; i++ )
+        if (nrows > 0 && ncols > 0) {
+ 	  data = new double[ nrows*ncols ];
+ 	  for ( int i = 0 ; i < nrows*ncols ; i++ )
  		{
  		data[i] = inmat.data[i];
  		}
+          }
  	};
+
+
+// from chatgpt/* constructor for initialization by existing object */
+
+/*
+    matrix(const matrix& inmat) : nrows(inmat.nrows), ncols(inmat.ncols), data(nullptr) {
+        if (nrows > 0 && ncols > 0) {
+            data = new double[nrows * ncols];
+            for (int i = 0; i < nrows * ncols; i++) {
+                data[i] = inmat.data[i];
+            }
+        }
+    }
+
+    // Destructor
+    ~matrix() {
+        delete[] data;
+    }
+*/
  
  matrix::~matrix()      /* destructor */
  	{
- 	if ( nrows*ncols > 0 ) delete data;
+ 	if ( nrows*ncols > 0 ) delete[] data;
  	};
  
  void matrix::operator=( matrix inmat )  // assignment !!
@@ -1572,8 +1594,8 @@ jmp_buf mcpp_env;
   int confto2 = 0;
   int NC = 0;
   if (nr1 != nr2 ) error_signal(mcpp_env, MULT_FAIL_DIM_AGRMNT);
-  if (nc1 == 1 & nc2 >= 1) { NC = nc2; confto2 = 1; }
-  else if (nc2 == 1 & nc1 >=1 ) {NC = nc1; confto2 = 0; }
+  if ((nc1 == 1) & (nc2 >= 1)) { NC = nc2; confto2 = 1; }
+  else if ((nc2 == 1) & (nc1 >=1) ) {NC = nc1; confto2 = 0; }
   else error_signal(mcpp_env, MULT_FAIL_DIM_AGRMNT);
   matrix ans = newmat(nr1,NC);
   for (int i = 0 ; i < nr1 ; i++ )
@@ -2316,7 +2338,7 @@ jmp_buf mcpp_env;
    int umaxit = 0;
    double qls_val = 0.0;
    double ql_val = 0.0;
-   while (del > *tol & iter < *maxiter ) 
+   while ((del > *tol) & (iter < *maxiter) ) 
     {
     matrix Mall = apply_elwise(Xin*Bcur+OFFin,(double(*)(double))mu); 
     matrix Rall = Yin - Mall;
